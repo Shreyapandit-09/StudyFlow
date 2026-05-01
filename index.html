@@ -688,6 +688,8 @@
     }
     
     // ==================== Authentication ====================
+    const API_URL = window.__STUDYFLOW_API_URL__ || 'https://studyflow-soqr.onrender.com';
+
     function showSignup() {
       document.getElementById('login-form').classList.add('hidden');
       document.getElementById('signup-form').classList.remove('hidden');
@@ -712,7 +714,7 @@
       btn.textContent = 'Signing In...';
       
       try {
-        const response = await fetch('http://localhost:5000/api/auth/signin', {
+        const response = await fetch(`${API_URL}/api/auth/signin`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -738,7 +740,7 @@
         }
       } catch (error) {
         console.error('Login error:', error);
-        showToast('Unable to connect to server. Make sure backend is running on http://localhost:5000', 'error');
+        showToast(`Unable to connect to server. Make sure backend is running on ${API_URL}`, 'error');
       } finally {
         btn.disabled = false;
         btn.textContent = 'Sign In';
@@ -771,7 +773,7 @@
       btn.textContent = 'Creating...';
       
       try {
-        const response = await fetch('http://localhost:5000/api/auth/signup', {
+        const response = await fetch(`${API_URL}/api/auth/signup`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -798,7 +800,7 @@
         }
       } catch (error) {
         console.error('Signup error:', error);
-        showToast('Unable to connect to server. Make sure backend is running on http://localhost:5000', 'error');
+        showToast(`Unable to connect to server. Make sure backend is running on ${API_URL}`, 'error');
       } finally {
         btn.disabled = false;
         btn.textContent = 'Create Account';
