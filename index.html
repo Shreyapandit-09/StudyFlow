@@ -578,6 +578,45 @@
     }
     
     // ==================== Data SDK ====================
+    const DATA_STORAGE_KEY = 'studyflow_data';
+    
+    // Simple localStorage-based data management
+    const dataManager = {
+      loadData() {
+        const data = JSON.parse(localStorage.getItem(DATA_STORAGE_KEY) || '[]');
+        dataHandler.onDataChanged(data);
+      },
+      
+      async create(item) {
+        const data = JSON.parse(localStorage.getItem(DATA_STORAGE_KEY) || '[]');
+        const newItem = { ...item, __backendId: Date.now().toString() };
+        data.push(newItem);
+        localStorage.setItem(DATA_STORAGE_KEY, JSON.stringify(data));
+        dataHandler.onDataChanged(data);
+        return { isOk: true, data: newItem };
+      },
+      
+      async update(item) {
+        const data = JSON.parse(localStorage.getItem(DATA_STORAGE_KEY) || '[]');
+        const index = data.findIndex(d => d.__backendId === item.__backendId);
+        if (index !== -1) {
+          data[index] = { ...data[index], ...item };
+          localStorage.setItem(DATA_STORAGE_KEY, JSON.stringify(data));
+          dataHandler.onDataChanged(data);
+          return { isOk: true };
+        }
+        return { isOk: false };
+      },
+      
+      async delete(item) {
+        const data = JSON.parse(localStorage.getItem(DATA_STORAGE_KEY) || '[]');
+        const filtered = data.filter(d => d.__backendId !== item.__backendId);
+        localStorage.setItem(DATA_STORAGE_KEY, JSON.stringify(filtered));
+        dataHandler.onDataChanged(filtered);
+        return { isOk: true };
+      }
+    };
+    
     const dataHandler = {
       onDataChanged(data) {
         recordCount = data.length;
@@ -610,12 +649,8 @@
     };
     
     async function initDataSdk() {
-      if (window.dataSdk) {
-        const result = await window.dataSdk.init(dataHandler);
-        if (!result.isOk) {
-          console.error('Failed to initialize data SDK');
-        }
-      }
+      // Load data from localStorage
+      dataManager.loadData();
       
       // Check if user is already logged in via JWT token
       const token = localStorage.getItem('studyflow_token');
@@ -1157,7 +1192,7 @@
       
       // Delete existing study blocks
       for (const block of appData.studyBlocks) {
-        await window.dataSdk.delete(block);
+        await dataManager.delete(block);
       }
       
       // Sort tasks by deadline and priority
@@ -1194,7 +1229,7 @@
           const hoursForBlock = Math.min(hoursPerDay, remainingHours);
           remainingHours -= hoursForBlock;
           
-          await window.dataSdk.create({
+          await dataManager.create({
             type: 'study_block',
             study_block_date: studyDate.toISOString().split('T')[0],
             study_block_task_id: task.__backendId,
@@ -1329,7 +1364,7 @@
       btn.disabled = true;
       btn.textContent = 'Adding...';
       
-      const result = await window.dataSdk.create({
+      const result = await dataManager.create({
         type: 'course',
         course_name: name,
         course_color: color
@@ -1339,17 +1374,8 @@
       btn.textContent = 'Add Course';
       
       if (result.isOk) {
-        // Manually add to appData and refresh UI
-        const newCourse = {
-          __backendId: result.data.__backendId,
-          course_name: name,
-          course_color: color,
-          type: 'course'
-        };
-        appData.courses.push(newCourse);
         closeModal();
         showToast('Course added!', 'success');
-        updateCoursesPage();
       } else {
         showToast('Failed to add course', 'error');
       }
@@ -1375,7 +1401,7 @@
       btn.disabled = true;
       btn.textContent = 'Adding...';
       
-      const result = await window.dataSdk.create({
+      const result = await dataManager.create({
         type: 'task',
         task_title: title,
         task_course_id: courseId,
@@ -1390,24 +1416,8 @@
       btn.textContent = 'Add Task';
       
       if (result.isOk) {
-        // Manually add to appData and refresh UI
-        const newTask = {
-          __backendId: result.data.__backendId,
-          task_title: title,
-          task_course_id: courseId,
-          task_deadline: deadline,
-          task_effort_hours: effort,
-          task_priority: priority,
-          task_completed: false,
-          task_created_at: new Date().toISOString(),
-          type: 'task'
-        };
-        appData.tasks.push(newTask);
         closeModal();
         showToast('Task added!', 'success');
-        updateDashboard();
-        updateCoursesPage();
-        updatePlannerPage();
       } else {
         showToast('Failed to add task', 'error');
       }
@@ -1418,7 +1428,7 @@
       const task = appData.tasks.find(t => t.__backendId === taskId);
       if (!task) return;
       
-      const result = await window.dataSdk.update({
+      const result = await dataManager.update({
         ...task,
         task_completed: !task.task_completed
       });
@@ -1435,7 +1445,7 @@
       const block = appData.studyBlocks.find(b => b.__backendId === blockId);
       if (!block) return;
       
-      const result = await window.dataSdk.update({
+      const result = await dataManager.update({
         ...block,
         study_block_completed: !block.study_block_completed
       });
@@ -1460,7 +1470,7 @@
         
         const newStreak = diffDays === 1 ? (streak.streak_count || 0) + 1 : 1;
         
-        await window.dataSdk.update({
+        await dataManager.update({
           ...streak,
           streak_count: newStreak,
           last_study_date: today
@@ -1468,7 +1478,7 @@
       } else {
         if (recordCount >= 999) return;
         
-        await window.dataSdk.create({
+        await dataManager.create({
           type: 'streak',
           streak_count: 1,
           last_study_date: today
@@ -1514,11 +1524,11 @@
               // Delete study blocks for this task
               const taskBlocks = appData.studyBlocks.filter(b => b.study_block_task_id === task.__backendId);
               for (const block of taskBlocks) {
-                await window.dataSdk.delete(block);
+                await dataManager.delete(block);
               }
-              await window.dataSdk.delete(task);
+              await dataManager.delete(task);
             }
-            await window.dataSdk.delete(course);
+            await dataManager.delete(course);
             showToast('Course deleted', 'success');
           }
         } else if (pendingDelete.type === 'task') {
@@ -1527,15 +1537,15 @@
             // Delete study blocks for this task
             const taskBlocks = appData.studyBlocks.filter(b => b.study_block_task_id === task.__backendId);
             for (const block of taskBlocks) {
-              await window.dataSdk.delete(block);
+              await dataManager.delete(block);
             }
-            await window.dataSdk.delete(task);
+            await dataManager.delete(task);
             showToast('Task deleted', 'success');
           }
         } else if (pendingDelete.type === 'block') {
           const block = appData.studyBlocks.find(b => b.__backendId === pendingDelete.id);
           if (block) {
-            await window.dataSdk.delete(block);
+            await dataManager.delete(block);
             showToast('Study block removed', 'success');
           }
         }
