@@ -688,7 +688,7 @@
     }
     
     // ==================== Authentication ====================
-    const API_URL = window.__STUDYFLOW_API_URL__ || 'https://studyflow-soqr.onrender.com';
+    // Client-side simulation - no backend needed
 
     function showSignup() {
       document.getElementById('login-form').classList.add('hidden');
@@ -700,7 +700,7 @@
       document.getElementById('login-form').classList.remove('hidden');
     }
     
-    async function handleLogin(event) {
+    function handleLogin(event) {
       const email = document.getElementById('login-email').value.trim();
       const password = document.getElementById('login-password').value;
       
@@ -713,41 +713,30 @@
       btn.disabled = true;
       btn.textContent = 'Signing In...';
       
-      try {
-        const response = await fetch(`${API_URL}/api/auth/signin`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ email, password })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-          localStorage.setItem('studyflow_token', data.token);
+      // Simulate login - check localStorage
+      const users = JSON.parse(localStorage.getItem('studyflow_users') || '[]');
+      const user = users.find(u => u.email === email);
+      
+      setTimeout(() => {
+        if (user && user.password === password) {
+          localStorage.setItem('studyflow_token', 'demo-token-' + Date.now());
           localStorage.setItem('studyflow_user', email);
-          localStorage.setItem('studyflow_user_id', data.user.id);
-          localStorage.setItem('studyflow_user_name', data.user.name);
-          currentUser = data.user;
+          localStorage.setItem('studyflow_user_id', user.id);
+          localStorage.setItem('studyflow_user_name', user.name);
+          currentUser = { id: user.id, name: user.name, email: user.email };
           showMainApp();
-          showToast('Welcome back, ' + data.user.name + '!', 'success');
+          showToast('Welcome back, ' + user.name + '!', 'success');
           document.getElementById('login-email').value = '';
           document.getElementById('login-password').value = '';
         } else {
-          const message = data.errors ? data.errors.map(err => err.msg).join(', ') : data.message || 'Login failed';
-          showToast(message, 'error');
+          showToast('Invalid email or password', 'error');
         }
-      } catch (error) {
-        console.error('Login error:', error);
-        showToast(`Unable to connect to server. Make sure backend is running on ${API_URL}`, 'error');
-      } finally {
         btn.disabled = false;
         btn.textContent = 'Sign In';
-      }
+      }, 500); // Simulate network delay
     }
     
-    async function handleSignup(event) {
+    function handleSignup(event) {
       const name = document.getElementById('signup-name').value.trim();
       const email = document.getElementById('signup-email').value.trim();
       const password = document.getElementById('signup-password').value;
@@ -772,39 +761,37 @@
       btn.disabled = true;
       btn.textContent = 'Creating...';
       
-      try {
-        const response = await fetch(`${API_URL}/api/auth/signup`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ name, email, password })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-          localStorage.setItem('studyflow_token', data.token);
+      // Simulate signup - store in localStorage
+      const users = JSON.parse(localStorage.getItem('studyflow_users') || '[]');
+      const existingUser = users.find(u => u.email === email);
+      
+      setTimeout(() => {
+        if (existingUser) {
+          showToast('Email already registered', 'error');
+        } else {
+          const newUser = {
+            id: Date.now().toString(),
+            name,
+            email,
+            password
+          };
+          users.push(newUser);
+          localStorage.setItem('studyflow_users', JSON.stringify(users));
+          
+          localStorage.setItem('studyflow_token', 'demo-token-' + Date.now());
           localStorage.setItem('studyflow_user', email);
-          localStorage.setItem('studyflow_user_id', data.user.id);
-          localStorage.setItem('studyflow_user_name', data.user.name);
-          currentUser = data.user;
+          localStorage.setItem('studyflow_user_id', newUser.id);
+          localStorage.setItem('studyflow_user_name', newUser.name);
+          currentUser = { id: newUser.id, name: newUser.name, email: newUser.email };
           showToast('Account created successfully!', 'success');
           showMainApp();
           document.getElementById('signup-name').value = '';
           document.getElementById('signup-email').value = '';
           document.getElementById('signup-password').value = '';
-        } else {
-          const message = data.errors ? data.errors.map(err => err.msg).join(', ') : data.message || 'Registration failed';
-          showToast(message, 'error');
         }
-      } catch (error) {
-        console.error('Signup error:', error);
-        showToast(`Unable to connect to server. Make sure backend is running on ${API_URL}`, 'error');
-      } finally {
         btn.disabled = false;
         btn.textContent = 'Create Account';
-      }
+      }, 500); // Simulate network delay
     }
     
     function handleLogout() {
